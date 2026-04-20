@@ -5,32 +5,30 @@
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
-module.exports = (app) => {
+export default (app) => {
   app.on(["check_suite.requested", "check_run.rerequested"], check);
 
   async function check(context) {
     const startTime = new Date();
 
     // Do stuff
-    const {
-      head_branch: headBranch,
-      head_sha: headSha,
-    } = context.payload.check_suite;
+    const { head_branch: headBranch, head_sha: headSha } =
+      context.payload.check_suite;
     // Probot API note: context.repo() => {username: 'hiimbex', repo: 'testing-things'}
-    return context.octokit.checks.create(
+    return context.octokit.rest.checks.create(
       context.repo({
         name: "My app!",
         head_branch: headBranch,
         head_sha: headSha,
         status: "completed",
-        started_at: startTime,
+        started_at: startTime.toISOString(),
         conclusion: "success",
-        completed_at: new Date(),
+        completed_at: new Date().toISOString(),
         output: {
           title: "Probot check!",
           summary: "The check has passed!",
         },
-      })
+      }),
     );
   }
 

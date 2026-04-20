@@ -1,21 +1,26 @@
-const nock = require("nock");
+import nock from "nock";
 // Requiring our app implementation
-const myProbotApp = require("..");
-const { Probot, ProbotOctokit } = require("probot");
+import myProbotApp from "../index.js";
+import { Probot, ProbotOctokit } from "probot";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 // Requiring our fixtures
-const checkSuitePayload = require("./fixtures/check_suite.requested");
-const checkRunSuccess = require("./fixtures/check_run.created");
-const fs = require("fs");
-const path = require("path");
+import checkSuitePayload from "./fixtures/check_suite.requested.json" with { type: "json" };
+import checkRunSuccess from "./fixtures/check_run.created.json" with { type: "json" };
+
+import { describe, beforeEach, afterEach, test } from "node:test";
+import assert from "node:assert";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const privateKey = fs.readFileSync(
   path.join(__dirname, "fixtures/mock-cert.pem"),
-  "utf-8"
+  "utf-8",
 );
 
 describe("My Probot app", () => {
   let probot;
-  let mockCert;
 
   beforeEach(() => {
     nock.disableNetConnect();
@@ -23,10 +28,11 @@ describe("My Probot app", () => {
       appId: 123,
       privateKey,
       // disable request throttling and retries for testing
-      Octokit: ProbotOctokit.defaults({
+      Octokit: ProbotOctokit.defaults((instanceOptions) => ({
+        ...instanceOptions,
         retry: { enabled: false },
         throttle: { enabled: false },
-      }),
+      })),
     });
     // Load our app into probot
     probot.load(myProbotApp);
@@ -45,7 +51,7 @@ describe("My Probot app", () => {
       .post("/repos/hiimbex/testing-things/check-runs", (body) => {
         body.started_at = "2018-10-05T17:35:21.594Z";
         body.completed_at = "2018-10-05T17:35:53.683Z";
-        expect(body).toMatchObject(checkRunSuccess);
+        assert.deepStrictEqual(body, checkRunSuccess);
         return true;
       })
       .reply(200);
@@ -53,7 +59,7 @@ describe("My Probot app", () => {
     // Receive a webhook event
     await probot.receive({ name: "check_suite", payload: checkSuitePayload });
 
-    expect(mock.pendingMocks()).toStrictEqual([]);
+    assert.deepStrictEqual(mock.pendingMocks(), []);
   });
 
   afterEach(() => {

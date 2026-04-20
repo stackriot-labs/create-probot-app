@@ -1,8 +1,11 @@
-import path from "path";
-import fs from "fs-extra";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 import { generate } from "egad";
-import { Config } from "./user-interaction";
-import { yellow, green } from "./write-help";
+import { Config } from "./user-interaction.js";
+import { yellow, green } from "./write-help.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const templatesSourcePath = path.join(__dirname, "../../templates/");
 
@@ -13,9 +16,10 @@ export const templatesSourcePath = path.join(__dirname, "../../templates/");
  */
 export function ensureValidDestination(
   destination: string,
-  overwrite: boolean
+  overwrite: boolean,
 ): void {
-  const invalidDestinationError: Error = new Error(`Invalid destination folder => ${destination}
+  const invalidDestinationError: Error =
+    new Error(`Invalid destination folder => ${destination}
 Please provide either an empty folder or a non existing path as <destination>
 `);
 
@@ -24,10 +28,10 @@ Please provide either an empty folder or a non existing path as <destination>
 
     try {
       fs.realpathSync(destination);
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === "ENOENT") throw invalidDestinationError; // Edge case: destination is a broken link
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error.code === "ENOENT") return;
     // The `destination` is neither a broken link nor an existing path
     else throw error;
@@ -39,7 +43,7 @@ Please provide either an empty folder or a non existing path as <destination>
       console.warn(
         yellow(`Explicit OVERWRITE option selected:
 Some files under "${fs.realpathSync(destination)}" might be overwritten!
-`)
+`),
       );
       return;
     }
@@ -61,21 +65,27 @@ export async function makeScaffolding(config: Config): Promise<Config> {
   [
     path.join(templatesSourcePath, "__common__"),
     path.join(templatesSourcePath, config.template),
-  ].forEach((source) => fs.copySync(source, tempDestPath));
+  ].forEach((source) =>
+    fs.cpSync(source, tempDestPath, {
+      recursive: true,
+    }),
+  );
 
-  fs.removeSync(path.join(tempDestPath, "__description__.txt"));
+  fs.rmSync(path.join(tempDestPath, "__description__.txt"));
 
   if (fs.existsSync(path.join(tempDestPath, "gitignore")))
     fs.renameSync(
       path.join(tempDestPath, "gitignore"),
-      path.join(tempDestPath, ".gitignore")
+      path.join(tempDestPath, ".gitignore"),
     );
 
   const result = await generate(tempDestPath, config.destination, config, {
     overwrite: config.overwrite,
   });
 
-  fs.removeSync(tempDestPath);
+  fs.rmSync(tempDestPath, {
+    recursive: true,
+  });
 
   result.forEach((fileInfo) => {
     console.log(
@@ -83,7 +93,7 @@ export async function makeScaffolding(config: Config): Promise<Config> {
         fileInfo.skipped
           ? yellow("skipped existing file")
           : green("created file")
-      }: ${fileInfo.path}`
+      }: ${fileInfo.path}`,
     );
   });
 
@@ -104,7 +114,7 @@ export function getTemplates(): Template[] {
       let descFile = path.join(
         templatesSourcePath,
         template,
-        "__description__.txt"
+        "__description__.txt",
       );
       return {
         name: template,

@@ -5,7 +5,7 @@
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
-module.exports = (app) => {
+export default (app) => {
   // Your code here
   app.log.info("Yay, the app was loaded!");
   app.on(
@@ -18,7 +18,7 @@ module.exports = (app) => {
       app.log.info(context.payload);
 
       // Probot API note: context.repo() => { username: 'hiimbex', repo: 'testing-things' }
-      const res = await context.octokit.repos.createDeployment(
+      const res = await context.octokit.rest.repos.createDeployment(
         context.repo({
           ref: context.payload.pull_request.head.ref, // The ref to deploy. This can be a branch, tag, or SHA.
           task: "deploy", // Specifies a task to execute (e.g., deploy or deploy:migrations).
@@ -31,11 +31,11 @@ module.exports = (app) => {
           description: "My Probot App's first deploy!", // Short description of the deployment
           transient_environment: false, // Specifies if the given environment is specific to the deployment and will no longer exist at some point in the future.
           production_environment: true, // Specifies if the given environment is one that end-users directly interact with.
-        })
+        }),
       );
 
       const deploymentId = res.data.id;
-      await context.octokit.repos.createDeploymentStatus(
+      await context.octokit.rest.repos.createDeploymentStatus(
         context.repo({
           deployment_id: deploymentId,
           state: "success", // The state of the status. Can be one of error, failure, inactive, pending, or success
@@ -43,9 +43,9 @@ module.exports = (app) => {
           description: "My Probot App set a deployment status!", // A short description of the status.
           environment_url: "https://example.com", // Sets the URL for accessing your environment.
           auto_inactive: true, // Adds a new inactive status to all prior non-transient, non-production environment deployments with the same repository and environment name as the created status's deployment. An inactive status is only added to deployments that had a success state.
-        })
+        }),
       );
-    }
+    },
   );
 
   // For more information on building apps:
